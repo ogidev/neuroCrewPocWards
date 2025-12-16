@@ -1,0 +1,363 @@
+\<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UK 325 Parliamentary Constituencies - Interactive Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .info-box {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 350px;
+        }
+        
+        .info-box h3 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+        
+        .info-box p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .info-box .label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+        
+        .badge-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .badge-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 250px;
+        }
+        
+        .controls h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+            font-size: 16px;
+        }
+        
+        .control-group {
+            margin-bottom: 12px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .control-group select,
+        .control-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .stats p {
+            margin: 3px 0;
+            font-size: 12px;
+            color: #555;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 50px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 2000;
+            text-align: center;
+        }
+        
+        .loading h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <h2>Loading Constituencies...</h2>
+        <div class="spinner"></div>
+        <p>Please wait while we load 325 constituencies</p>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div class="info-box" id="info-box">
+        <h3>UK 325 Constituencies</h3>
+        <p><span class="label">Total:</span> 325 constituencies</p>
+        <p><span class="label">Compliant:</span> 289 (88.9%)</p>
+        <p><span class="label">Total Electorate:</span> 47,792,307</p>
+        <p style="margin-top: 10px; font-size: 12px; color: #777;">
+            Click on any constituency to see details
+        </p>
+    </div>
+    
+    <div class="controls">
+        <h4>Filters</h4>
+        
+        <div class="control-group">
+            <label>Region</label>
+            <select id="region-filter">
+                <option value="all">All Regions</option>
+                <option value="London">London</option>
+                <option value="South East">South East</option>
+                <option value="South West">South West</option>
+                <option value="East of England">East of England</option>
+                <option value="West Midlands">West Midlands</option>
+                <option value="East Midlands">East Midlands</option>
+                <option value="Yorkshire and the Humber">Yorkshire and the Humber</option>
+                <option value="North West">North West</option>
+                <option value="North East">North East</option>
+                <option value="Scotland">Scotland</option>
+                <option value="Wales">Wales</option>
+                <option value="Northern Ireland">Northern Ireland</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label>Compliance</label>
+            <select id="compliance-filter">
+                <option value="all">All</option>
+                <option value="compliant">Compliant Only</option>
+                <option value="non-compliant">Non-compliant Only</option>
+            </select>
+        </div>
+        
+        <div class="stats">
+            <p><strong>Filtered Results:</strong></p>
+            <p id="filtered-count">325 constituencies</p>
+            <p id="filtered-electorate">47,792,307 electors</p>
+        </div>
+    </div>
+    
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([54.5, -3.5], 6);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18
+        }).addTo(map);
+        
+        let geojsonLayer;
+        let allData;
+        
+        // Color function
+        function getColor(compliant) {
+            return compliant ? '#27ae60' : '#e74c3c';
+        }
+        
+        // Style function
+        function style(feature) {
+            return {
+                fillColor: getColor(feature.properties.compliant),
+                weight: 1,
+                opacity: 1,
+                color: '#333',
+                fillOpacity: 0.6
+            };
+        }
+        
+        // Highlight feature
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 3,
+                color: '#fff',
+                fillOpacity: 0.8
+            });
+            layer.bringToFront();
+        }
+        
+        // Reset highlight
+        function resetHighlight(e) {
+            geojsonLayer.resetStyle(e.target);
+        }
+        
+        // Click handler
+        function onFeatureClick(e) {
+            const props = e.target.feature.properties;
+            const infoBox = document.getElementById('info-box');
+            
+            const complianceBadge = props.compliant 
+                ? '<span class="badge badge-success">✓ Compliant</span>'
+                : '<span class="badge badge-danger">✗ Non-compliant</span>';
+            
+            infoBox.innerHTML = `
+                <h3>${props.name}</h3>
+                <p><span class="label">ID:</span> ${props.id}</p>
+                <p><span class="label">Region:</span> ${props.region}</p>
+                <p><span class="label">Electorate:</span> ${props.electorate.toLocaleString()}</p>
+                <p><span class="label">Wards:</span> ${props.ward_count}</p>
+                <p><span class="label">Status:</span> ${complianceBadge}</p>
+            `;
+        }
+        
+        // Feature binding
+        function onEachFeature(feature, layer) {
+            layer.on({
+                mouseover: highlightFeature,
+                mouseout: resetHighlight,
+                click: onFeatureClick
+            });
+            
+            layer.bindPopup(`
+                <strong>${feature.properties.name}</strong><br>
+                Electorate: ${feature.properties.electorate.toLocaleString()}<br>
+                Wards: ${feature.properties.ward_count}<br>
+                ${feature.properties.compliant ? '✓ Compliant' : '✗ Non-compliant'}
+            `);
+        }
+        
+        // Load GeoJSON
+        fetch('constituencies_320plus5_robust_mapready_wards.geojson')
+            .then(response => response.json())
+            .then(data => {
+                allData = data;
+                displayData(data);
+                document.getElementById('loading').style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error loading GeoJSON:', error);
+                document.getElementById('loading').innerHTML = '<h2>Error loading data</h2><p>' + error + '</p>';
+            });
+        
+        // Display data
+        function displayData(data) {
+            if (geojsonLayer) {
+                map.removeLayer(geojsonLayer);
+            }
+            
+            geojsonLayer = L.geoJSON(data, {
+                style: style,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+            
+            // Update stats
+            const totalElectorate = data.features.reduce((sum, f) => sum + f.properties.electorate, 0);
+            document.getElementById('filtered-count').textContent = `${data.features.length} constituencies`;
+            document.getElementById('filtered-electorate').textContent = `${totalElectorate.toLocaleString()} electors`;
+        }
+        
+        // Filter function
+        function applyFilters() {
+            const regionFilter = document.getElementById('region-filter').value;
+            const complianceFilter = document.getElementById('compliance-filter').value;
+            
+            let filteredData = {
+                type: 'FeatureCollection',
+                features: allData.features.filter(feature => {
+                    const props = feature.properties;
+                    
+                    // Region filter
+                    if (regionFilter !== 'all' && props.region !== regionFilter) {
+                        return false;
+                    }
+                    
+                    // Compliance filter
+                    if (complianceFilter === 'compliant' && !props.compliant) {
+                        return false;
+                    }
+                    if (complianceFilter === 'non-compliant' && props.compliant) {
+                        return false;
+                    }
+                    
+                    return true;
+                })
+            };
+            
+            displayData(filteredData);
+        }
+        
+        // Event listeners
+        document.getElementById('region-filter').addEventListener('change', applyFilters);
+        document.getElementById('compliance-filter').addEventListener('change', applyFilters);
+    </script>
+</body>
+</html>
